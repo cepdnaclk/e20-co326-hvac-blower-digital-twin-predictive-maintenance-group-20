@@ -4,6 +4,7 @@ import math
 import json
 import joblib
 import paho.mqtt.client as mqtt
+import pandas as pd
 
 BROKER = "mqtt"
 PORT = 1883
@@ -38,7 +39,13 @@ while True:
 
     moving_avg = sum(history) / len(history)
 
-    prediction = model.predict([[current, moving_avg]])
+    features = pd.DataFrame([{
+    "current": current,
+    "moving_avg": moving_avg
+}])
+    prediction = model.predict(features)
+
+
 
     if prediction[0] == 1:
         status = "NORMAL"
