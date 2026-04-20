@@ -22,3 +22,89 @@ To ensure industrial-grade reliability, the system incorporates several **cybers
 Overall, this project demonstrates a complete **cyber-physical monitoring system integrating embedded hardware, industrial communication protocols, edge intelligence, and cloud analytics**. It highlights how modern industrial environments can transition from traditional reactive maintenance strategies to **predictive maintenance using Digital Twin technologies and Industrial IoT architectures**.
 
 ---
+
+## How This Works (current implementation)
+
+- Python edge simulator (in `python/`) generates realistic blower fan current readings, computes a short moving average, and performs anomaly detection using a pre-trained IsolationForest model (`fan_anomaly_model.pkl`).
+- The Python edge publishes two MQTT topics:
+  - `sensors/group20/hvac-blower/data` — periodic sensor payloads (timestamp, device, current, moving_avg, unit).
+  - `alerts/group20/hvac-blower/status` — status messages (NORMAL / ANOMALY) with a human-readable message.
+- An MQTT broker (Eclipse Mosquitto) runs as a Docker service (`mqtt` in `docker-compose.yml`) and relays messages to subscribers such as Node-RED for visualization or downstream processing.
+- A `python-edge` Docker service builds and runs the Python publisher inside a container so the system can be launched with `docker-compose` for end-to-end testing.
+
+## Repository structure (relevant files)
+
+- `docker-compose.yml` — brings up `mqtt`, `node-red`, and `python-edge` services.
+- `python/` — Python edge simulator and model artifacts:
+  - `mqtt_publisher.py` — main publisher with CLI, logging and reconnect/backoff logic.
+  - `fan_anomaly_model.pkl` — trained IsolationForest model (saved with scikit-learn 1.5.0).
+  - `requirements.txt` — Python dependencies (pinned `scikit-learn==1.5.0`).
+  - `Dockerfile` — image used by the `python-edge` service.
+  - `test_model.py` and `tests/test_model_pytest.py` — smoke test and pytest unit test for the model.
+
+## Quick start (Docker Compose)
+
+1. Build and start the services (broker + publisher):
+
+```powershell
+docker-compose up -d --build mqtt python-edge
+```
+
+2. Check the publisher logs to observe sensor and alert messages:
+
+```powershell
+docker-compose logs --tail=200 --follow python-edge
+```
+
+3. Run the smoke test inside the running `python-edge` container:
+
+```powershell
+docker-compose exec python-edge python test_model.py
+```
+
+## Run the Python publisher locally (without Docker)
+
+1. From the repository root, install dependencies:
+
+```bash
+pip install -r python/requirements.txt
+```
+
+2. Run the publisher for a limited number of iterations (useful for local development):
+
+```bash
+cd python
+python mqtt_publisher.py --iterations 10 --log-level INFO
+```
+
+CLI options for `mqtt_publisher.py`:
+
+- `--broker` (default `mqtt`) — MQTT host (use `localhost` when running outside compose).
+- `--port` (default `1883`) — MQTT port.
+- `--model-path` (default `fan_anomaly_model.pkl`) — path to the joblib model file.
+- `--interval` (default `2.0`) — seconds between publishes.
+- `--iterations` — integer limit for number of loop iterations (useful for tests).
+- `--log-level` — `DEBUG|INFO|WARNING|ERROR`.
+
+## Tests and CI
+
+- Unit test: `python/tests/test_model_pytest.py` — run with pytest:
+
+```bash
+cd python
+pytest -q tests
+```
+
+- A GitHub Actions workflow is provided at `.github/workflows/ci.yml` to run tests on push/PR.
+
+## Notes & troubleshooting
+
+- The saved model was trained and serialized with scikit-learn 1.5.0. We pin `scikit-learn==1.5.0` in `python/requirements.txt` to avoid unpickle compatibility warnings.
+- If the publisher cannot connect to the MQTT host named `mqtt`, either ensure `docker-compose` is running (service name `mqtt`) or run locally and pass `--broker localhost`.
+- The publisher implements an exponential backoff on connect attempts and graceful shutdown via SIGINT/SIGTERM.
+
+## Next steps (suggestions)
+
+- Add Node-RED flows (if not already present) to subscribe to the MQTT topics and visualize data in Grafana or a lightweight dashboard.
+- Add automated tests for the publisher CLI and mock MQTT using a test broker (e.g., `paho-mqtt` test client or `hbmqtt` in tests).
+- Extend the model to produce an anomaly score and threshold tuning / evaluation reports.

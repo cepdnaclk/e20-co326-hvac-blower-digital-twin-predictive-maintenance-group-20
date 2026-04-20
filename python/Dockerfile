@@ -3,11 +3,6 @@ FROM python:3.11-slim
 WORKDIR /app
 COPY . /app
 
-RUN pip install --no-cache-dir \
-    paho-mqtt \
-    numpy \
-    pandas \
-    scikit-learn \
-    joblib
+RUN pip install --no-cache-dir -r requirements.txt
 
 CMD ["python", "mqtt_publisher.py"]
