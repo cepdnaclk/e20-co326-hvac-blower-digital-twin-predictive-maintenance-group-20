@@ -1,0 +1,4 @@
+node-red/.npm/
+node-red/node_modules/
+*.backup
+**/*.backup
