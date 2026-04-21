@@ -20,4 +20,3 @@ if pred_n != 1 or pred_a != -1:
     sys.exit(2)
 else:
     print("Model test passed")
-    sys.exit(0)
