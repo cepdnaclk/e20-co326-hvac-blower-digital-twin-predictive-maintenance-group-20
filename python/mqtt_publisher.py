@@ -54,16 +54,18 @@ def run_publisher(args):
     signal.signal(signal.SIGTERM, _signal_handler)
 
     while not stop_requested and (args.iterations is None or t < args.iterations):
-        base = 3.0 + 0.3 * math.sin(t / 10)
+        cycle_t = t % args.cycle_length
+
+        base = 3.0 + 0.3 * math.sin(cycle_t / 10)
         noise = random.uniform(-0.1, 0.1)
-        drift = 0.001 * t
+        drift = 0.001 * cycle_t
 
         current = base + noise + drift
 
         if random.random() < 0.05:
             current += random.uniform(0.8, 1.5)
 
-        if 80 < t < 110:
+        if 80 < cycle_t < 110:
             current += 1.0
 
         history.append(current)
@@ -117,6 +119,7 @@ def main():
     parser.add_argument("--model-path", default="fan_anomaly_model.pkl")
     parser.add_argument("--interval", type=float, default=2.0, help="Publish interval (s)")
     parser.add_argument("--iterations", type=int, default=None, help="Number of iterations to run (for testing)")
+    parser.add_argument("--cycle-length", type=int, default=180, help="Simulation cycle length before drift resets")
     parser.add_argument("--log-level", default="INFO", help="Logging level (DEBUG, INFO, WARNING, ERROR)")
     args = parser.parse_args()
 
