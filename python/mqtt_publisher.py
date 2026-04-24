@@ -97,7 +97,7 @@ def run_publisher(args):
         moving_avg = sum(history) / len(history)
 
         features = pd.DataFrame([{"current": current, "moving_avg": moving_avg}])
-        prediction = model.predict(features)
+        prediction = model.predict(features.values)
 
         if prediction[0] == 1:
             status = "NORMAL"
