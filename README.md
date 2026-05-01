@@ -25,7 +25,7 @@ Overall, this project demonstrates a complete **cyber-physical monitoring system
 
 ## How This Works (current implementation)
 
-- Python edge simulator (in `python/`) generates realistic blower fan current readings, computes a short moving average, and performs anomaly detection using a pre-trained IsolationForest model (`fan_anomaly_model.pkl`).
+- Python edge simulator (in `python/`) generates realistic blower fan current readings, computes a short moving average, and performs anomaly detection using a pre-trained OneClassSVM model (`fan_anomaly_model.pkl`).
 - The Python edge publishes two MQTT topics:
   - `sensors/group20/hvac-blower/data` — periodic sensor payloads (timestamp, device, current, moving_avg, unit).
   - `alerts/group20/hvac-blower/status` — status messages (NORMAL / ANOMALY) with a human-readable message.
@@ -37,7 +37,7 @@ Overall, this project demonstrates a complete **cyber-physical monitoring system
 - `docker-compose.yml` — brings up `mqtt`, `node-red`, and `python-edge` services.
 - `python/` — Python edge simulator and model artifacts:
   - `mqtt_publisher.py` — main publisher with CLI, logging and reconnect/backoff logic.
-  - `fan_anomaly_model.pkl` — trained IsolationForest model (saved with scikit-learn 1.5.0).
+  - `fan_anomaly_model.pkl` — trained OneClassSVM model (saved with scikit-learn 1.5.0).
   - `requirements.txt` — Python dependencies (pinned `scikit-learn==1.5.0`).
   - `Dockerfile` — image used by the `python-edge` service.
   - `test_model.py` and `tests/test_model_pytest.py` — smoke test and pytest unit test for the model.
@@ -100,6 +100,9 @@ pytest -q tests
 ## Notes & troubleshooting
 
 - The saved model was trained and serialized with scikit-learn 1.5.0. We pin `scikit-learn==1.5.0` in `python/requirements.txt` to avoid unpickle compatibility warnings.
+- The current anomaly detection model is trained on synthetic fan current data generated in `python/generate_data.py`, not on real measured blower current from the physical system.
+- Because this is synthetic training data, the model should be treated as a prototype/demo model. If the simulated current pattern does not match the real fan behavior closely, predictions can be inaccurate and may produce false positives or false negatives.
+- For reliable deployment, the model should be retrained and validated using real fan current data collected from the actual hardware under normal and abnormal operating conditions.
 - If the publisher cannot connect to the MQTT host named `mqtt`, either ensure `docker-compose` is running (service name `mqtt`) or run locally and pass `--broker localhost`.
 - The publisher implements an exponential backoff on connect attempts and graceful shutdown via SIGINT/SIGTERM.
 
